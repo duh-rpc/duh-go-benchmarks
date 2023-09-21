@@ -1,4 +1,4 @@
-module github.com/duh-rpc/duh-grpc-benchmarks
+module github.com/duh-rpc/duh-go-benchmarks
 
 go 1.21.0
 

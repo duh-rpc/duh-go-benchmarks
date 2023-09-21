@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/duh-rpc/duh-grpc-benchmarks/server"
-	v1 "github.com/duh-rpc/duh-grpc-benchmarks/v1"
+	"github.com/duh-rpc/duh-go-benchmarks/server"
+	v1 "github.com/duh-rpc/duh-go-benchmarks/v1"
 	"github.com/golang/protobuf/proto"
 )
 

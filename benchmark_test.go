@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	benchmark "github.com/duh-rpc/duh-grpc-benchmarks"
-	"github.com/duh-rpc/duh-grpc-benchmarks/server"
-	pb "github.com/duh-rpc/duh-grpc-benchmarks/v1"
+	benchmark "github.com/duh-rpc/duh-go-benchmarks"
+	"github.com/duh-rpc/duh-go-benchmarks/server"
+	pb "github.com/duh-rpc/duh-go-benchmarks/v1"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -92,7 +92,7 @@ func BenchmarkHTTPServer(b *testing.B) {
 	go func() {
 		if err := srv.Serve(listener); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
-				b.Fatal(err)
+				panic(err)
 			}
 		}
 	}()

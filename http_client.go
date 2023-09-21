@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/duh-rpc/duh-grpc-benchmarks/v1"
+	"github.com/duh-rpc/duh-go-benchmarks/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/runtime/protoiface"
 )

@@ -33,7 +33,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/duh-rpc/duh-grpc-benchmarks/v1"
+	pb "github.com/duh-rpc/duh-go-benchmarks/v1"
 	"github.com/golang/protobuf/proto"
 )
 
