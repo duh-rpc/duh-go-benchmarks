@@ -21,7 +21,7 @@ import (
 )
 
 func BenchmarkGRPCServer(b *testing.B) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	const GRPCAddress = "localhost:9081"
@@ -68,7 +68,7 @@ func BenchmarkGRPCServer(b *testing.B) {
 }
 
 func BenchmarkHTTPServer(b *testing.B) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	const HTTPAddress = "localhost:9080"
@@ -105,20 +105,19 @@ func BenchmarkHTTPServer(b *testing.B) {
 	// For a fair comparison, we establish a connection the HTTP server before the benchmark test begins by making a
 	// GET call to the server. See WithBlock() on grpc.Dial() in the GRPC benchmark test above
 	hc := &http.Client{Transport: http.DefaultTransport}
-	resp, err := hc.Get("http://" + HTTPAddress + "/v1/say.hello")
+	r, err := hc.Get("http://" + HTTPAddress + "/v1/say.hello")
 	if err != nil {
 		b.Fatal(err)
 		return
 	}
-	_ = resp.Body.Close()
+	_ = r.Body.Close()
 
 	client := benchmark.NewClient(hc, HTTPAddress)
 
 	b.Run("http.GetFeature()", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			_, err := client.GetFeature(ctx, &pb.Point{Latitude: 409146138, Longitude: -746188906})
-			//resp, err := client.GetFeature(ctx, &pb.Point{Latitude: 409146138, Longitude: -746188906})
-			//fmt.Printf("resp: %v\n", resp)
+			var resp pb.Feature
+			err := client.GetFeature(ctx, &pb.Point{Latitude: 409146138, Longitude: -746188906}, &resp)
 			if err != nil {
 				b.Fatalf("client.GetFeature failed: %v", err)
 			}
