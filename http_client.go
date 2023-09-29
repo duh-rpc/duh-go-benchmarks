@@ -17,14 +17,14 @@ var bufferPool = sync.Pool{
 }
 
 type HTTPClient struct {
-	*duh.HTTPClient
+	*duh.Client
 	endpoint string
 }
 
 func NewClient(client *http.Client, address string) *HTTPClient {
 	return &HTTPClient{
 		endpoint: fmt.Sprintf("http://%s", address),
-		HTTPClient: &duh.HTTPClient{
+		Client: &duh.Client{
 			Client: client,
 		},
 	}
