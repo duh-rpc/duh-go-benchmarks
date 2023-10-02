@@ -1,7 +1,31 @@
-### Benchmarks for duh-go
-The benchmarks here compare HTTP requests using duh-go with GRPC
+### Benchmark GRPC vs HTTP
+This is a simple benchmark that uses the [Route
+Guide](https://github.com/grpc/grpc-go/tree/master/examples/route_guide) code
+as provided by the GRPC project to compare gPRC performance with standard HTTP
+in golang.
 
-The goal of this benchmark suite is to show that regular HTTP requests/responses are as fast, or faster than GPRC
+### Test Setup
+The server hosts a lone instance of RouteGuideService that awaits requests
+through gRPC, HTTP/1, HTTP/2(H2C), or HTTP/2(TLS). Before executing each test,
+we check the port to confirm the service is operational and ready to accept
+requests. Then, a client tailored for that particular test is set up, and an
+initial request is dispatched to connect to the server which ensures a live
+connection exists between the client and server before the benchmark begins.
+
+### Apples to Apples Comparison
+Each test involves a single-threaded request to the GetFeature() method of the
+RouteGuideService. Both gRPC and HTTP tests utilize protobuf for serialization
+to ensure an equitable comparison, without the inclusion of any extra
+middleware or injectors. The HTTP handler employs a straightforward switch for
+routing requests to handlers, mirroring the way gRPC manages route dispatching
+internally. In fact, gRPC usually outpaces REST because while REST facilitates
+intricate route handling, gRPC simply matches the request path through a basic
+string comparison. Our objective with these measures is to provide the most
+impartial comparison between gRPC and HTTP.
+
+### Results
+The results are quite surprising! HTTP/2 (H2C and TLS) is slower than gRPC, and
+gRPC is slower than HTTP/1!
 
 ```bash
 $ go test -bench=. -benchmem=1  -benchtime=30s
@@ -30,3 +54,23 @@ BenchmarkHTTPS/http.GetFeature()
 BenchmarkHTTPS/http.GetFeature()-10        	   16632	     71318 ns/op
 PASS
 ```
+
+### HTTP/1 is faster than HTTP/2 on golang
+This is a known issue and is well documented.
+* https://github.com/golang/go/issues/47840
+* https://github.com/nspeed-app/http2issue
+* https://github.com/kgersen/h3ctx
+* https://www.emcfarlane.com/blog/2023-05-15-grpc-servehttp
+
+### HTTP/1 is faster than GRPC on golang
+We initiated this project after observing that our HTTP/1 services were
+consistently outpacing our gRPC-based services in production. The fact that a
+benchmark corroborated our production findings was surprising. We had
+previously believed—and to some extent, still believe—that the performance
+difference was more linked to our implementation than gRPC's lack of high-speed
+performance.
+
+We are in the process of moving a single service back to HTTP/1 to gauge the
+impact this will have on our systems.
+
+Please feel free to open an issue if you have a comment on this benchmark.
