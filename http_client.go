@@ -21,9 +21,9 @@ type HTTPClient struct {
 	endpoint string
 }
 
-func NewClient(client *http.Client, address string) *HTTPClient {
+func NewClient(client *http.Client, endpoint string) *HTTPClient {
 	return &HTTPClient{
-		endpoint: fmt.Sprintf("http://%s", address),
+		endpoint: endpoint,
 		Client: &duh.Client{
 			Client: client,
 		},

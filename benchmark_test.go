@@ -2,6 +2,7 @@ package benchmark_test
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -20,7 +21,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func BenchmarkGRPCServer(b *testing.B) {
+func BenchmarkGRPC(b *testing.B) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
@@ -67,7 +68,7 @@ func BenchmarkGRPCServer(b *testing.B) {
 	grpcServer.GracefulStop()
 }
 
-func BenchmarkHTTPServer(b *testing.B) {
+func BenchmarkHTTP2(b *testing.B) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
@@ -104,15 +105,150 @@ func BenchmarkHTTPServer(b *testing.B) {
 
 	// For a fair comparison, we establish a connection the HTTP server before the benchmark test begins by making a
 	// GET call to the server. See WithBlock() on grpc.Dial() in the GRPC benchmark test above
+	hc := &http.Client{
+		Transport: &http2.Transport{
+			// So http2.Transport doesn't complain the URL scheme isn't 'https'
+			AllowHTTP: true,
+			// Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
+			},
+		},
+	}
+	r, err := hc.Get("http://" + HTTPAddress + "/v1/say.hello")
+	if err != nil {
+		b.Fatal(err)
+		return
+	}
+	fmt.Printf("Proto: %d\n", r.ProtoMajor)
+	_ = r.Body.Close()
+
+	client := benchmark.NewClient(hc, fmt.Sprintf("http://%s", HTTPAddress))
+
+	b.Run("http.GetFeature()", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			var resp pb.Feature
+			err := client.GetFeature(ctx, &pb.Point{Latitude: 409146138, Longitude: -746188906}, &resp)
+			if err != nil {
+				b.Fatalf("client.GetFeature failed: %v", err)
+			}
+		}
+	})
+	b.ReportAllocs()
+	_ = srv.Shutdown(context.Background())
+}
+
+func BenchmarkHTTP1(b *testing.B) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	const HTTPAddress = "localhost:9081"
+	listener, err := net.Listen("tcp", HTTPAddress)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = listener.Close() }()
+
+	handler := benchmark.NewHTTPHandler(server.NewRouteGuideServer())
+
+	srv := &http.Server{
+		Addr:    HTTPAddress,
+		Handler: handler,
+	}
+
+	go func() {
+		if err := srv.Serve(listener); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				panic(err)
+			}
+		}
+	}()
+
+	// Wait for the server in the go routine to start
+	if err := WaitForConnect(ctx, HTTPAddress); err != nil {
+		b.Fatal(err)
+	}
+
+	// For a fair comparison, we establish a connection the HTTP server before the benchmark test begins by making a
+	// GET call to the server. See WithBlock() on grpc.Dial() in the GRPC benchmark test above
 	hc := &http.Client{Transport: http.DefaultTransport}
 	r, err := hc.Get("http://" + HTTPAddress + "/v1/say.hello")
 	if err != nil {
 		b.Fatal(err)
 		return
 	}
+	fmt.Printf("Proto: %d\n", r.ProtoMajor)
 	_ = r.Body.Close()
 
-	client := benchmark.NewClient(hc, HTTPAddress)
+	client := benchmark.NewClient(hc, fmt.Sprintf("http://%s", HTTPAddress))
+
+	b.Run("http.GetFeature()", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			var resp pb.Feature
+			err := client.GetFeature(ctx, &pb.Point{Latitude: 409146138, Longitude: -746188906}, &resp)
+			if err != nil {
+				b.Fatalf("client.GetFeature failed: %v", err)
+			}
+		}
+	})
+	b.ReportAllocs()
+	_ = srv.Shutdown(context.Background())
+}
+
+func BenchmarkHTTPS(b *testing.B) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	var conf benchmark.TLSConfig
+	if err := benchmark.SetupTLS(&conf); err != nil {
+		b.Fatal(err)
+	}
+
+	const HTTPAddress = "localhost:9082"
+	listener, err := net.Listen("tcp", HTTPAddress)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = listener.Close() }()
+
+	handler := benchmark.NewHTTPHandler(server.NewRouteGuideServer())
+
+	srv := &http.Server{
+		TLSConfig: conf.ServerTLS,
+		Addr:      HTTPAddress,
+		Handler:   handler,
+	}
+
+	go func() {
+		if err := srv.ServeTLS(listener, "", ""); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				panic(err)
+			}
+		}
+	}()
+
+	// Wait for the server in the go routine to start
+	if err := WaitForConnect(ctx, HTTPAddress); err != nil {
+		b.Fatal(err)
+	}
+
+	// For a fair comparison, we establish a connection the HTTP server before the benchmark test begins by making a
+	// GET call to the server. See WithBlock() on grpc.Dial() in the GRPC benchmark test above
+	hc := &http.Client{
+		Transport: &http2.Transport{
+			TLSClientConfig: conf.ClientTLS,
+		},
+	}
+	r, err := hc.Get("https://" + HTTPAddress + "/v1/say.hello")
+	if err != nil {
+		b.Fatal(err)
+		return
+	}
+	fmt.Printf("Proto: %d\n", r.ProtoMajor)
+	_ = r.Body.Close()
+
+	client := benchmark.NewClient(hc, fmt.Sprintf("https://%s", HTTPAddress))
 
 	b.Run("http.GetFeature()", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
