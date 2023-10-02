@@ -8,8 +8,25 @@ $ go test -bench=. -benchmem=1  -benchtime=30s
 goos: darwin
 goarch: arm64
 pkg: github.com/duh-rpc/duh-go-benchmarks
-BenchmarkGRPCServer/grpc.GetFeature()-10                  642619             55743 ns/op           12950 B/op        326 allocs/op
-BenchmarkHTTPServer/http.GetFeature()-10                  735146             49172 ns/op           11412 B/op        272 allocs/op
+BenchmarkGRPC
+BenchmarkGRPC/grpc.GetFeature()
+BenchmarkGRPC/grpc.GetFeature()-10         	   19750	     56548 ns/op
+BenchmarkHTTP2
+Proto: 2
+BenchmarkHTTP2/http.GetFeature()
+BenchmarkHTTP2/http.GetFeature()-10        	   16590	     72107 ns/op
+BenchmarkHTTP1
+Proto: 1
+BenchmarkHTTP1/http.GetFeature()
+BenchmarkHTTP1/http.GetFeature()-10        	   24290	     49005 ns/op
+BenchmarkHTTPS
+2023/10/02 12:31:54 Generating CA Certificates....
+2023/10/02 12:31:54 Generating Server Private Key and Certificate....
+2023/10/02 12:31:54 Cert DNS names: (localhost)
+2023/10/02 12:31:54 Cert IPs: (127.0.0.1)
+2023/10/02 12:31:54 http: TLS handshake error from 127.0.0.1:51711: EOF
+Proto: 2
+BenchmarkHTTPS/http.GetFeature()
+BenchmarkHTTPS/http.GetFeature()-10        	   16632	     71318 ns/op
 PASS
-ok      github.com/duh-rpc/duh-go-benchmarks    73.998s
 ```
